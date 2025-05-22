@@ -1,0 +1,64 @@
+import tkinter as tk
+from tkinter import ttk
+from tkinter import messagebox
+
+personal = [
+    {"id": 1, "nombre": "Ana Pérez", "vacaciones_disponibles": 20, "vacaciones_tomadas": 0},
+    {"id": 2, "nombre": "Luis Gómez", "vacaciones_disponibles": 15, "vacaciones_tomadas": 0},
+    {"id": 3, "nombre": "María López", "vacaciones_disponibles": 18, "vacaciones_tomadas": 0},
+]
+
+def mostrar_vacaciones(event):
+    nombre_seleccionado = combo_empleados.get()
+    for empleado in personal:
+        if empleado["nombre"] == nombre_seleccionado:
+            label_info.config(
+                text=f"Días de vacaciones disponibles: {empleado['vacaciones_disponibles']}\n"
+                    f"Vacaciones tomadas: {empleado['vacaciones_tomadas']}/2"
+            )
+            if empleado["vacaciones_tomadas"] >= 2:
+                btn_tomar_vacaciones.config(state="disabled")
+            else:
+                btn_tomar_vacaciones.config(state="normal")
+            break
+
+def tomar_vacaciones():
+    nombre_seleccionado = combo_empleados.get()
+    if not nombre_seleccionado:
+        messagebox.showwarning("Atención", "Selecciona un empleado primero.")
+        return
+
+    for empleado in personal:
+        if empleado["nombre"] == nombre_seleccionado:
+            if empleado["vacaciones_tomadas"] >= 2:
+                messagebox.showinfo("Límite alcanzado", f"{nombre_seleccionado} ya tomó vacaciones 2 veces.")
+                btn_tomar_vacaciones.config(state="disabled")
+                return
+            else:
+                empleado["vacaciones_tomadas"] += 1
+                messagebox.showinfo("Vacaciones tomadas", f"{nombre_seleccionado} ha tomado vacaciones.")
+                label_info.config(
+                    text=f"Días de vacaciones disponibles: {empleado['vacaciones_disponibles']}\n"
+                        f"Vacaciones tomadas: {empleado['vacaciones_tomadas']}/2"
+                )
+                if empleado["vacaciones_tomadas"] >= 2:
+                    btn_tomar_vacaciones.config(state="disabled")
+                break
+
+root = tk.Tk()
+root.title("Control de Asistencias - Hospital")
+root.geometry("400x300")
+
+tk.Label(root, text="Selecciona un empleado:").pack(pady=10)
+
+nombres = [empleado["nombre"] for empleado in personal]
+combo_empleados = ttk.Combobox(root, values=nombres, state="readonly")
+combo_empleados.pack(pady=5)
+combo_empleados.bind("<<ComboboxSelected>>", mostrar_vacaciones)
+
+label_info = tk.Label(root, text="")
+label_info.pack(pady=20)
+
+btn_tomar_vacaciones = tk.Button(root, text="Tomar vacaciones", command=tomar_vacaciones, state="disabled")
+btn_tomar_vacaciones.pack(pady=10)
+root.mainloop()
