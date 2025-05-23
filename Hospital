@@ -1,63 +1,94 @@
 import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
+import random
 
-personal = [
-    {"id": 1, "nombre": "Ana Pérez", "vacaciones_disponibles": 20, "vacaciones_tomadas": 0},
-    {"id": 2, "nombre": "Luis Gómez", "vacaciones_disponibles": 15, "vacaciones_tomadas": 0},
-    {"id": 3, "nombre": "María López", "vacaciones_disponibles": 18, "vacaciones_tomadas": 0},
-]
+class Empleado:
+    _id_counter = 1 
+    def __init__(self, nombre):
+        self.id = Empleado._id_counter
+        Empleado._id_counter += 1
+        self.nombre = nombre
+        self.vacaciones_disponibles = random.randint(15, 25)
+        self.vacaciones_tomadas = 0
+    def tomar_vacaciones(self):
+        if self.vacaciones_tomadas < 2:
+            self.vacaciones_tomadas += 1
+            return True
+        return False
+    
+personal = []
+
+def registrar_empleado():
+    nombre = entry_nombre.get().strip()
+    if not nombre:
+        messagebox.showwarning("Error", "Ingresa un nombre válido.")
+        return
+    nuevo = Empleado(nombre)
+    personal.append(nuevo)
+    entry_nombre.delete(0, tk.END)
+    actualizar_combobox()
+    messagebox.showinfo(
+        "Registrado",
+        f"{nuevo.nombre} fue registrado con ID {nuevo.id} y tiene {nuevo.vacaciones_disponibles} días disponibles."
+    )
+
+def actualizar_combobox():
+    nombres = [f"{empleado.nombre} (ID: {empleado.id})" for empleado in personal]
+    combo_empleados['values'] = nombres
+
+def obtener_empleado_por_nombre_completo(nombre_completo):
+    for empleado in personal:
+        texto = f"{empleado.nombre} (ID: {empleado.id})"
+        if texto == nombre_completo:
+            return empleado
+    return None
 
 def mostrar_vacaciones(event):
-    nombre_seleccionado = combo_empleados.get()
-    for empleado in personal:
-        if empleado["nombre"] == nombre_seleccionado:
-            label_info.config(
-                text=f"Días de vacaciones disponibles: {empleado['vacaciones_disponibles']}\n"
-                    f"Vacaciones tomadas: {empleado['vacaciones_tomadas']}/2"
-            )
-            if empleado["vacaciones_tomadas"] >= 2:
-                btn_tomar_vacaciones.config(state="disabled")
-            else:
-                btn_tomar_vacaciones.config(state="normal")
-            break
+    nombre_completo = combo_empleados.get()
+    empleado = obtener_empleado_por_nombre_completo(nombre_completo)
+    if empleado:
+        label_info.config(
+            text=f"ID: {empleado.id}\n"
+                f"Nombre: {empleado.nombre}\n"
+                f"Vacaciones disponibles: {empleado.vacaciones_disponibles}\n"
+                f"Vacaciones tomadas: {empleado.vacaciones_tomadas}/2"
+        )
+        btn_tomar_vacaciones.config(state="normal" if empleado.vacaciones_tomadas < 2 else "disabled")
 
 def tomar_vacaciones():
-    nombre_seleccionado = combo_empleados.get()
-    if not nombre_seleccionado:
-        messagebox.showwarning("Atención", "Selecciona un empleado primero.")
-        return
-
-    for empleado in personal:
-        if empleado["nombre"] == nombre_seleccionado:
-            if empleado["vacaciones_tomadas"] >= 2:
-                messagebox.showinfo("Límite alcanzado", f"{nombre_seleccionado} ya tomó vacaciones 2 veces.")
-                btn_tomar_vacaciones.config(state="disabled")
-                return
-            else:
-                empleado["vacaciones_tomadas"] += 1
-                messagebox.showinfo("Vacaciones tomadas", f"{nombre_seleccionado} ha tomado vacaciones.")
-                label_info.config(
-                    text=f"Días de vacaciones disponibles: {empleado['vacaciones_disponibles']}\n"
-                        f"Vacaciones tomadas: {empleado['vacaciones_tomadas']}/2"
-                )
-                if empleado["vacaciones_tomadas"] >= 2:
-                    btn_tomar_vacaciones.config(state="disabled")
-                break
+    nombre_completo = combo_empleados.get()
+    empleado = obtener_empleado_por_nombre_completo(nombre_completo)
+    if empleado:
+        if empleado.tomar_vacaciones():
+            messagebox.showinfo("Vacaciones tomadas", f"{empleado.nombre} ha tomado vacaciones.")
+        else:
+            messagebox.showinfo("Límite alcanzado", f"{empleado.nombre} ya tomó vacaciones 2 veces.")
+        mostrar_vacaciones(None)
 
 root = tk.Tk()
-root.title("Control de Asistencias - Hospital")
-root.geometry("400x300")
+root.title("Control de Vacaciones - Hospital")
+root.geometry("450x420")
 
-tk.Label(root, text="Selecciona un empleado:").pack(pady=10)
+tk.Label(root, text="Registro de Empleado", font=("Arial", 12, "bold")).pack(pady=5)
 
-nombres = [empleado["nombre"] for empleado in personal]
-combo_empleados = ttk.Combobox(root, values=nombres, state="readonly")
+frame_registro = tk.Frame(root)
+frame_registro.pack(pady=5)
+
+tk.Label(frame_registro, text="Nombre:").grid(row=0, column=0, padx=5, pady=2)
+entry_nombre = tk.Entry(frame_registro)
+entry_nombre.grid(row=0, column=1, padx=5, pady=2)
+
+tk.Button(root, text="Registrar Empleado", command=registrar_empleado).pack(pady=10)
+tk.Label(root, text="-" * 60).pack()
+
+tk.Label(root, text="Selecciona un empleado:", font=("Arial", 11)).pack(pady=10)
+
+combo_empleados = ttk.Combobox(root, state="readonly")
 combo_empleados.pack(pady=5)
 combo_empleados.bind("<<ComboboxSelected>>", mostrar_vacaciones)
 
-label_info = tk.Label(root, text="")
-label_info.pack(pady=20)
+label_info = tk.Label(root, text="", justify="left")
+label_info.pack(pady=10)
 
 btn_tomar_vacaciones = tk.Button(root, text="Tomar vacaciones", command=tomar_vacaciones, state="disabled")
 btn_tomar_vacaciones.pack(pady=10)
