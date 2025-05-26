@@ -17,7 +17,6 @@ empleados = []
 def actualizar_lista_empleados():
     nombres = [f"{emp.nombre} (ID: {emp.id})" for emp in empleados]
     combo_empleados['values'] = nombres
-    combo_eliminar['values'] = nombres
     combo_editar['values'] = nombres
     label_info.config(text="")
     btn_tomar_vacaciones.config(state="disabled")
@@ -66,7 +65,7 @@ def tomar_vacaciones():
             break
 
 def eliminar_empleado():
-    seleccionado = combo_eliminar.get()
+    seleccionado = combo_editar.get()
     for emp in empleados:
         if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
             empleados.remove(emp)
@@ -118,7 +117,7 @@ root.geometry("500x700")
 menu = tk.Menu(root)
 root.config(menu=menu)
 menu.add_command(label="Inicio", command=mostrar_menu_principal)
-menu.add_command(label="Editar empleado", command=mostrar_menu_editar)
+menu.add_command(label="Editar o eliminar empleado", command=mostrar_menu_editar)
 
 frame_principal = tk.Frame(root)
 frame_principal.pack(fill='both', expand=True)
@@ -157,13 +156,9 @@ label_info.pack(pady=10)
 btn_tomar_vacaciones = tk.Button(frame_principal, text="Tomar vacaciones", state="disabled", command=tomar_vacaciones)
 btn_tomar_vacaciones.pack(pady=10)
 
-tk.Label(frame_principal, text="Eliminar empleado:").pack(pady=5)
-combo_eliminar = ttk.Combobox(frame_principal, state="readonly")
-combo_eliminar.pack(pady=5)
-tk.Button(frame_principal, text="Eliminar", command=eliminar_empleado).pack(pady=10)
 frame_editar = tk.Frame(root)
 
-tk.Label(frame_editar, text="Selecciona empleado a editar:").pack(pady=5)
+tk.Label(frame_editar, text="Selecciona empleado a editar o eliminar:").pack(pady=5)
 combo_editar = ttk.Combobox(frame_editar, state="readonly")
 combo_editar.pack(pady=5)
 combo_editar.bind("<<ComboboxSelected>>", cargar_datos_empleado)
@@ -190,4 +185,6 @@ combo_editar_cargo = ttk.Combobox(frame_editar, values=[
 combo_editar_cargo.pack(pady=5)
 
 tk.Button(frame_editar, text="Guardar cambios", command=editar_empleado).pack(pady=10)
+tk.Button(frame_editar, text="Eliminar empleado", command=eliminar_empleado).pack(pady=10)
+
 root.mainloop()
