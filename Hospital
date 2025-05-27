@@ -11,6 +11,7 @@ class Empleado:
         self.cargo = cargo
         self.vacaciones_disponibles = random.randint(15, 25)
         self.vacaciones_tomadas = 0
+        self.historial_vacaciones = []
 
 empleados = []
 
@@ -20,6 +21,7 @@ def actualizar_lista_empleados():
     combo_editar['values'] = nombres
     label_info.config(text="")
     btn_tomar_vacaciones.config(state="disabled")
+    text_historial.delete("1.0", tk.END)
 
 def agregar_empleado():
     nombre = entry_nombre.get()
@@ -42,12 +44,15 @@ def agregar_empleado():
 
 def mostrar_vacaciones(event):
     seleccionado = combo_empleados.get()
+    text_historial.delete("1.0", tk.END)
     for emp in empleados:
         if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
             label_info.config(
                 text=f"Edad: {emp.edad}\nGénero: {emp.genero}\nCargo: {emp.cargo}\n"
                     f"Días de vacaciones disponibles: {emp.vacaciones_disponibles}\nVacaciones tomadas: {emp.vacaciones_tomadas}/2"
             )
+            for i, registro in enumerate(emp.historial_vacaciones, start=1):
+                text_historial.insert(tk.END, f"Vacación {i}: {registro}\n")
             btn_tomar_vacaciones.config(state="normal" if emp.vacaciones_tomadas < 2 else "disabled")
             break
 
@@ -59,7 +64,13 @@ def tomar_vacaciones():
                 messagebox.showinfo("Límite alcanzado", f"{emp.nombre} ya tomó vacaciones 2 veces.")
                 btn_tomar_vacaciones.config(state="disabled")
             else:
+                dias = emp.vacaciones_disponibles
                 emp.vacaciones_tomadas += 1
+                emp.vacaciones_disponibles = 0
+                emp.historial_vacaciones.append(f"{dias} días tomados")
+                text_historial_general.config(state="normal")
+                text_historial_general.insert(tk.END, f"{emp.nombre} - Vacaciones {emp.vacaciones_tomadas} - {dias} días\n")
+                text_historial_general.config(state="disabled")
                 messagebox.showinfo("Vacaciones tomadas", f"{emp.nombre} ha tomado vacaciones.")
                 mostrar_vacaciones(None)
             break
@@ -112,7 +123,7 @@ def editar_empleado():
 
 root = tk.Tk()
 root.title("Control de Empleados - Hospital")
-root.geometry("500x700")
+root.geometry("500x750")
 
 menu = tk.Menu(root)
 root.config(menu=menu)
@@ -156,6 +167,13 @@ label_info.pack(pady=10)
 btn_tomar_vacaciones = tk.Button(frame_principal, text="Tomar vacaciones", state="disabled", command=tomar_vacaciones)
 btn_tomar_vacaciones.pack(pady=10)
 
+text_historial = tk.Text(frame_principal, height=5, width=60)
+text_historial.pack(pady=10)
+
+tk.Label(frame_principal, text="Historial general de vacaciones:").pack(pady=5)
+text_historial_general = tk.Text(frame_principal, height=8, width=60, state="disabled")
+text_historial_general.pack(pady=5)
+
 frame_editar = tk.Frame(root)
 
 tk.Label(frame_editar, text="Selecciona empleado a editar o eliminar:").pack(pady=5)
@@ -188,3 +206,4 @@ tk.Button(frame_editar, text="Guardar cambios", command=editar_empleado).pack(pa
 tk.Button(frame_editar, text="Eliminar empleado", command=eliminar_empleado).pack(pady=10)
 
 root.mainloop()
+
