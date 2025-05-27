@@ -26,11 +26,15 @@ def actualizar_lista_empleados():
 def agregar_empleado():
     nombre = entry_nombre.get()
     edad = entry_edad.get()
-    genero = entry_genero.get()
+    genero = combo_genero.get()
     cargo = combo_cargo.get()
 
     if not (nombre and edad and genero and cargo):
         messagebox.showwarning("Campos incompletos", "Por favor, completa todos los campos.")
+        return
+
+    if not edad.isdigit() or int(edad) < 18:
+        messagebox.showwarning("Edad inválida", "El empleado debe tener al menos 18 años.")
         return
 
     nuevo = Empleado(nombre, edad, genero, cargo)
@@ -38,7 +42,7 @@ def agregar_empleado():
     actualizar_lista_empleados()
     entry_nombre.delete(0, tk.END)
     entry_edad.delete(0, tk.END)
-    entry_genero.delete(0, tk.END)
+    combo_genero.set("")
     combo_cargo.set("")
     messagebox.showinfo("Empleado agregado", f"{nuevo.nombre} ha sido registrado con ID {nuevo.id}.")
 
@@ -63,15 +67,24 @@ def tomar_vacaciones():
             if emp.vacaciones_tomadas >= 2:
                 messagebox.showinfo("Límite alcanzado", f"{emp.nombre} ya tomó vacaciones 2 veces.")
                 btn_tomar_vacaciones.config(state="disabled")
+            elif emp.vacaciones_disponibles == 0:
+                messagebox.showinfo("Sin días disponibles", f"{emp.nombre} no tiene días de vacaciones disponibles.")
             else:
                 dias = emp.vacaciones_disponibles
                 emp.vacaciones_tomadas += 1
-                emp.vacaciones_disponibles = 0
                 emp.historial_vacaciones.append(f"{dias} días tomados")
                 text_historial_general.config(state="normal")
                 text_historial_general.insert(tk.END, f"{emp.nombre} - Vacaciones {emp.vacaciones_tomadas} - {dias} días\n")
                 text_historial_general.config(state="disabled")
                 messagebox.showinfo("Vacaciones tomadas", f"{emp.nombre} ha tomado vacaciones.")
+
+                
+                if emp.vacaciones_tomadas == 1:
+                    emp.vacaciones_disponibles = random.randint(15, 23)
+                else:
+                    
+                    emp.vacaciones_disponibles = 0
+
                 mostrar_vacaciones(None)
             break
 
@@ -104,8 +117,7 @@ def cargar_datos_empleado(event):
             entry_editar_nombre.insert(0, emp.nombre)
             entry_editar_edad.delete(0, tk.END)
             entry_editar_edad.insert(0, emp.edad)
-            entry_editar_genero.delete(0, tk.END)
-            entry_editar_genero.insert(0, emp.genero)
+            combo_editar_genero.set(emp.genero)
             combo_editar_cargo.set(emp.cargo)
             break
 
@@ -113,9 +125,13 @@ def editar_empleado():
     seleccionado = combo_editar.get()
     for emp in empleados:
         if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
+            nueva_edad = entry_editar_edad.get()
+            if not nueva_edad.isdigit() or int(nueva_edad) < 18:
+                messagebox.showwarning("Edad inválida", "El empleado debe tener al menos 18 años.")
+                return
             emp.nombre = entry_editar_nombre.get()
-            emp.edad = entry_editar_edad.get()
-            emp.genero = entry_editar_genero.get()
+            emp.edad = nueva_edad
+            emp.genero = combo_editar_genero.get()
             emp.cargo = combo_editar_cargo.get()
             actualizar_lista_empleados()
             messagebox.showinfo("Empleado actualizado", f"Los datos de {emp.nombre} han sido actualizados.")
@@ -142,8 +158,8 @@ entry_edad = tk.Entry(frame_principal)
 entry_edad.pack()
 
 tk.Label(frame_principal, text="Género:").pack()
-entry_genero = tk.Entry(frame_principal)
-entry_genero.pack()
+combo_genero = ttk.Combobox(frame_principal, values=["Femenino", "Masculino", "Otro"], state="readonly")
+combo_genero.pack()
 
 tk.Label(frame_principal, text="Cargo:").pack()
 combo_cargo = ttk.Combobox(frame_principal, values=[
@@ -190,8 +206,8 @@ entry_editar_edad = tk.Entry(frame_editar)
 entry_editar_edad.pack()
 
 tk.Label(frame_editar, text="Nuevo género:").pack()
-entry_editar_genero = tk.Entry(frame_editar)
-entry_editar_genero.pack()
+combo_editar_genero = ttk.Combobox(frame_editar, values=["Femenino", "Masculino", "Otro"], state="readonly")
+combo_editar_genero.pack()
 
 tk.Label(frame_editar, text="Nuevo cargo:").pack()
 combo_editar_cargo = ttk.Combobox(frame_editar, values=[
