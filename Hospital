@@ -17,11 +17,11 @@ empleados = []
 
 def actualizar_lista_empleados():
     nombres = [f"{emp.nombre} (ID: {emp.id})" for emp in empleados]
-    combo_empleados['values'] = nombres
+    combo_empleados_vac['values'] = nombres
     combo_editar['values'] = nombres
-    label_info.config(text="")
-    btn_tomar_vacaciones.config(state="disabled")
-    text_historial.delete("1.0", tk.END)
+    label_info_vac.config(text="")
+    btn_tomar_vacaciones_vac.config(state="disabled")
+    text_historial_vac.delete("1.0", tk.END)
 
 def agregar_empleado():
     nombre = entry_nombre.get()
@@ -36,7 +36,6 @@ def agregar_empleado():
     if not edad.isdigit() or int(edad) < 18:
         messagebox.showwarning("Edad inválida", "El empleado debe tener al menos 18 años.")
         return
-
     nuevo = Empleado(nombre, edad, genero, cargo)
     empleados.append(nuevo)
     actualizar_lista_empleados()
@@ -46,46 +45,43 @@ def agregar_empleado():
     combo_cargo.set("")
     messagebox.showinfo("Empleado agregado", f"{nuevo.nombre} ha sido registrado con ID {nuevo.id}.")
 
-def mostrar_vacaciones(event):
-    seleccionado = combo_empleados.get()
-    text_historial.delete("1.0", tk.END)
+def mostrar_vacaciones(event=None):
+    if event:
+        seleccionado = combo_empleados_vac.get() if event.widget == combo_empleados_vac else None
+    else:
+        seleccionado = combo_empleados_vac.get()
+    if not seleccionado:
+        return
+    text_historial_vac.delete("1.0", tk.END)
     for emp in empleados:
         if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
-            label_info.config(
+            label_info_vac.config(
                 text=f"Edad: {emp.edad}\nGénero: {emp.genero}\nCargo: {emp.cargo}\n"
                     f"Días de vacaciones disponibles: {emp.vacaciones_disponibles}\nVacaciones tomadas: {emp.vacaciones_tomadas}/2"
             )
             for i, registro in enumerate(emp.historial_vacaciones, start=1):
-                text_historial.insert(tk.END, f"Vacación {i}: {registro}\n")
-            btn_tomar_vacaciones.config(state="normal" if emp.vacaciones_tomadas < 2 else "disabled")
+                text_historial_vac.insert(tk.END, f"Vacación {i}: {registro}\n")
+            btn_tomar_vacaciones_vac.config(state="normal" if emp.vacaciones_tomadas < 2 else "disabled")
             break
 
 def tomar_vacaciones():
-    seleccionado = combo_empleados.get()
+    seleccionado = combo_empleados_vac.get()
     for emp in empleados:
         if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
             if emp.vacaciones_tomadas >= 2:
                 messagebox.showinfo("Límite alcanzado", f"{emp.nombre} ya tomó vacaciones 2 veces.")
-                btn_tomar_vacaciones.config(state="disabled")
             elif emp.vacaciones_disponibles == 0:
                 messagebox.showinfo("Sin días disponibles", f"{emp.nombre} no tiene días de vacaciones disponibles.")
             else:
                 dias = emp.vacaciones_disponibles
                 emp.vacaciones_tomadas += 1
                 emp.historial_vacaciones.append(f"{dias} días tomados")
-                text_historial_general.config(state="normal")
-                text_historial_general.insert(tk.END, f"{emp.nombre} - Vacaciones {emp.vacaciones_tomadas} - {dias} días\n")
-                text_historial_general.config(state="disabled")
+                text_historial_general_vac.config(state="normal")
+                text_historial_general_vac.insert(tk.END, f"{emp.nombre} - Vacaciones {emp.vacaciones_tomadas} - {dias} días\n")
+                text_historial_general_vac.config(state="disabled")
                 messagebox.showinfo("Vacaciones tomadas", f"{emp.nombre} ha tomado vacaciones.")
-
-                
-                if emp.vacaciones_tomadas == 1:
-                    emp.vacaciones_disponibles = random.randint(15, 23)
-                else:
-                    
-                    emp.vacaciones_disponibles = 0
-
-                mostrar_vacaciones(None)
+                emp.vacaciones_disponibles = random.randint(15, 23) if emp.vacaciones_tomadas == 1 else 0
+                mostrar_vacaciones()
             break
 
 def eliminar_empleado():
@@ -108,6 +104,12 @@ def mostrar_menu_editar():
         if not isinstance(widget, tk.Menu):
             widget.pack_forget()
     frame_editar.pack(fill='both', expand=True)
+
+def mostrar_menu_vacaciones():
+    for widget in root.winfo_children():
+        if not isinstance(widget, tk.Menu):
+            widget.pack_forget()
+    frame_vacaciones.pack(fill='both', expand=True)
 
 def cargar_datos_empleado(event):
     seleccionado = combo_editar.get()
@@ -145,6 +147,7 @@ menu = tk.Menu(root)
 root.config(menu=menu)
 menu.add_command(label="Inicio", command=mostrar_menu_principal)
 menu.add_command(label="Editar o eliminar empleado", command=mostrar_menu_editar)
+menu.add_command(label="Gestión de vacaciones", command=mostrar_menu_vacaciones)
 
 frame_principal = tk.Frame(root)
 frame_principal.pack(fill='both', expand=True)
@@ -171,24 +174,6 @@ combo_cargo = ttk.Combobox(frame_principal, values=[
 combo_cargo.pack(pady=5)
 
 tk.Button(frame_principal, text="Agregar empleado", command=agregar_empleado).pack(pady=10)
-
-tk.Label(frame_principal, text="Selecciona un empleado:").pack(pady=5)
-combo_empleados = ttk.Combobox(frame_principal, state="readonly")
-combo_empleados.pack(pady=5)
-combo_empleados.bind("<<ComboboxSelected>>", mostrar_vacaciones)
-
-label_info = tk.Label(frame_principal, text="")
-label_info.pack(pady=10)
-
-btn_tomar_vacaciones = tk.Button(frame_principal, text="Tomar vacaciones", state="disabled", command=tomar_vacaciones)
-btn_tomar_vacaciones.pack(pady=10)
-
-text_historial = tk.Text(frame_principal, height=5, width=60)
-text_historial.pack(pady=10)
-
-tk.Label(frame_principal, text="Historial general de vacaciones:").pack(pady=5)
-text_historial_general = tk.Text(frame_principal, height=8, width=60, state="disabled")
-text_historial_general.pack(pady=5)
 
 frame_editar = tk.Frame(root)
 
@@ -220,6 +205,26 @@ combo_editar_cargo.pack(pady=5)
 
 tk.Button(frame_editar, text="Guardar cambios", command=editar_empleado).pack(pady=10)
 tk.Button(frame_editar, text="Eliminar empleado", command=eliminar_empleado).pack(pady=10)
+
+frame_vacaciones = tk.Frame(root)
+
+tk.Label(frame_vacaciones, text="Selecciona un empleado para gestionar vacaciones:").pack(pady=5)
+combo_empleados_vac = ttk.Combobox(frame_vacaciones, state="readonly")
+combo_empleados_vac.pack(pady=5)
+combo_empleados_vac.bind("<<ComboboxSelected>>", mostrar_vacaciones)
+
+label_info_vac = tk.Label(frame_vacaciones, text="")
+label_info_vac.pack(pady=10)
+
+btn_tomar_vacaciones_vac = tk.Button(frame_vacaciones, text="Tomar vacaciones", state="disabled", command=tomar_vacaciones)
+btn_tomar_vacaciones_vac.pack(pady=10)
+
+text_historial_vac = tk.Text(frame_vacaciones, height=5, width=60)
+text_historial_vac.pack(pady=10)
+
+tk.Label(frame_vacaciones, text="Historial general de vacaciones:").pack(pady=5)
+text_historial_general_vac = tk.Text(frame_vacaciones, height=8, width=60, state="disabled")
+text_historial_general_vac.pack(pady=5)
 
 root.mainloop()
 
