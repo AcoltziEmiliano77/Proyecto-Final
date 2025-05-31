@@ -41,6 +41,9 @@ def agregar_empleado():
     nuevo = Empleado(nombre, edad, genero, cargo, curp, nss)
     empleados.append(nuevo)
     actualizar_lista_empleados()
+    text_historial_empleados.config(state="normal")
+    text_historial_empleados.insert(tk.END, f"{nuevo.nombre} (ID: {nuevo.id}) - Edad: {nuevo.edad}, Género: {nuevo.genero}, Cargo: {nuevo.cargo}\n")
+    text_historial_empleados.config(state="disabled")
     entry_nombre.delete(0, tk.END)
     entry_edad.delete(0, tk.END)
     combo_genero.set("")
@@ -193,6 +196,10 @@ entry_nss.pack()
 
 tk.Button(frame_principal, text="Agregar empleado", command=agregar_empleado).pack(pady=10)
 
+tk.Label(frame_principal, text="Historial de empleados agregados:").pack()
+text_historial_empleados = tk.Text(frame_principal, height=10, width=60, state="disabled")
+text_historial_empleados.pack(pady=10)
+
 frame_editar = tk.Frame(root)
 
 tk.Label(frame_editar, text="Selecciona empleado a editar o eliminar:").pack(pady=5)
@@ -253,4 +260,5 @@ text_historial_general_vac = tk.Text(frame_vacaciones, height=8, width=60, state
 text_historial_general_vac.pack(pady=5)
 
 root.mainloop()
+
 
