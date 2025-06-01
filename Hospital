@@ -152,18 +152,45 @@ def editar_empleado():
             messagebox.showinfo("Empleado actualizado", f"Los datos de {emp.nombre} han sido actualizados.")
             break
 
+def mostrar_bienvenida():
+    for widget in root.winfo_children():
+        if not isinstance(widget, tk.Menu):
+            widget.pack_forget()
+    frame_bienvenida.pack(fill='both', expand=True)
+
 root = tk.Tk()
 root.title("Control de Empleados - Hospital")
 root.geometry("500x800")
+menu_barra = tk.Menu(root)
+root.config(menu=menu_barra)
 
-menu = tk.Menu(root)
-root.config(menu=menu)
-menu.add_command(label="Inicio", command=mostrar_menu_principal)
-menu.add_command(label="Editar o eliminar empleado", command=mostrar_menu_editar)
-menu.add_command(label="Gestión de vacaciones", command=mostrar_menu_vacaciones)
+frame_bienvenida = tk.Frame(root)
+
+label_bienvenida = tk.Label(frame_bienvenida, text="¡Bienvenido al sistema del hospital!", font=("Arial", 16))
+label_bienvenida.pack(pady=50)
+
+btn_comenzar = tk.Button(frame_bienvenida, text="Comenzar", font=("Arial", 12), command=mostrar_menu_principal)
+btn_comenzar.pack()
+
+menu_archivo = tk.Menu(menu_barra, tearoff=0)
+menu_archivo.add_command(label="Inicio", command=lambda: None) 
+menu_archivo.add_separator()
+menu_archivo.add_command(label="Salir", command=root.quit)
+menu_barra.add_cascade(label="Archivo", menu=menu_archivo)
+
+menu_empleados = tk.Menu(menu_barra, tearoff=0)
+menu_empleados.add_command(label="Agregar empleado", command=mostrar_menu_principal)
+menu_empleados.add_command(label="Editar o eliminar empleado", command=mostrar_menu_editar)
+menu_barra.add_cascade(label="Empleados", menu=menu_empleados)
+
+menu_vacaciones = tk.Menu(menu_barra, tearoff=0)
+menu_vacaciones.add_command(label="Gestión de vacaciones", command=mostrar_menu_vacaciones)
+menu_barra.add_cascade(label="Vacaciones", menu=menu_vacaciones)
+
 
 frame_principal = tk.Frame(root)
-frame_principal.pack(fill='both', expand=True)
+mostrar_bienvenida()
+
 
 tk.Label(frame_principal, text="Nombre:").pack()
 entry_nombre = tk.Entry(frame_principal)
@@ -260,5 +287,3 @@ text_historial_general_vac = tk.Text(frame_vacaciones, height=8, width=60, state
 text_historial_general_vac.pack(pady=5)
 
 root.mainloop()
-
-
