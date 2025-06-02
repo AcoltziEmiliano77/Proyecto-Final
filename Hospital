@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import random
+from datetime import datetime
+from datetime import date
 
 class Empleado:
     def __init__(self, nombre, edad, genero, cargo, curp, nss):
@@ -16,6 +18,7 @@ class Empleado:
         self.historial_vacaciones = []
 
 empleados = []
+pases_lista = []
 
 def actualizar_lista_empleados():
     nombres = [f"{emp.nombre} (ID: {emp.id})" for emp in empleados]
@@ -158,39 +161,62 @@ def mostrar_bienvenida():
             widget.pack_forget()
     frame_bienvenida.pack(fill='both', expand=True)
 
+def mostrar_menu_lista():
+    for widget in root.winfo_children():
+        if not isinstance(widget, tk.Menu):
+            widget.pack_forget()
+    frame_lista.pack(fill='both', expand=True)
+    actualizar_lista_empleados_lista()
+
+def actualizar_lista_empleados_lista():
+    lista_empleados_lista.delete(0, tk.END)
+    for emp in empleados:
+        lista_empleados_lista.insert(tk.END, f"{emp.nombre} (ID: {emp.id})")
+
+def registrar_pase():
+    seleccionados = lista_empleados_lista.curselection()
+    if not empleados:
+        messagebox.showwarning("Sin empleados", "No hay empleados registrados.")
+        return
+    if not seleccionados:
+        messagebox.showwarning("Sin selección", "Selecciona al menos un empleado presente.")
+        return
+    presentes = [empleados[i].nombre for i in seleccionados]
+    ausentes = [emp.nombre for i, emp in enumerate(empleados) if i not in seleccionados]
+    fecha_actual = date.today().strftime("%d/%m/%Y")
+    registro = f"{fecha_actual} - Presentes: {', '.join(presentes)} | Ausentes: {', '.join(ausentes)}"
+    pases_lista.append(registro)
+    text_historial_lista.config(state="normal")
+    text_historial_lista.insert(tk.END, registro + "\n")
+    text_historial_lista.config(state="disabled")
+    messagebox.showinfo("Pase de lista registrado", "El pase de lista ha sido guardado.")
+
 root = tk.Tk()
 root.title("Control de Empleados - Hospital")
 root.geometry("500x800")
 menu_barra = tk.Menu(root)
 root.config(menu=menu_barra)
 
-frame_bienvenida = tk.Frame(root)
+frame_bienvenida = tk.Frame(root, bg="#f0f4f7")
 
-label_bienvenida = tk.Label(frame_bienvenida, text="¡Bienvenido al sistema del hospital!", font=("Arial", 16))
-label_bienvenida.pack(pady=50)
+contenedor_centrado = tk.Frame(frame_bienvenida, bg="#f0f4f7")
+contenedor_centrado.place(relx=0.5, rely=0.5, anchor="center")
 
-btn_comenzar = tk.Button(frame_bienvenida, text="Comenzar", font=("Arial", 12), command=mostrar_menu_principal)
+label_bienvenida = tk.Label(contenedor_centrado, text="¡Bienvenido al sistema del hospital!", font=("Arial", 18, "bold"), bg="#f0f4f7", fg="#2c3e50")
+label_bienvenida.pack(pady=20)
+
+btn_comenzar = tk.Button(contenedor_centrado, text="Comenzar", font=("Arial", 14), bg="#2980b9", fg="white", padx=20, pady=5, command=mostrar_menu_principal)
 btn_comenzar.pack()
 
-menu_archivo = tk.Menu(menu_barra, tearoff=0)
-menu_archivo.add_command(label="Inicio", command=lambda: None) 
-menu_archivo.add_separator()
-menu_archivo.add_command(label="Salir", command=root.quit)
-menu_barra.add_cascade(label="Archivo", menu=menu_archivo)
-
-menu_empleados = tk.Menu(menu_barra, tearoff=0)
-menu_empleados.add_command(label="Agregar empleado", command=mostrar_menu_principal)
-menu_empleados.add_command(label="Editar o eliminar empleado", command=mostrar_menu_editar)
-menu_barra.add_cascade(label="Empleados", menu=menu_empleados)
-
-menu_vacaciones = tk.Menu(menu_barra, tearoff=0)
-menu_vacaciones.add_command(label="Gestión de vacaciones", command=mostrar_menu_vacaciones)
-menu_barra.add_cascade(label="Vacaciones", menu=menu_vacaciones)
-
+menu_general = tk.Menu(menu_barra, tearoff=0)
+menu_general.add_command(label="Agregar empleado", command=mostrar_menu_principal)
+menu_general.add_command(label="Editar o eliminar empleado", command=mostrar_menu_editar)
+menu_general.add_command(label="Gestión de vacaciones", command=mostrar_menu_vacaciones)
+menu_general.add_command(label="Pase de lista", command=mostrar_menu_lista)
+menu_barra.add_cascade(label="Menú", menu=menu_general)
 
 frame_principal = tk.Frame(root)
 mostrar_bienvenida()
-
 
 tk.Label(frame_principal, text="Nombre:").pack()
 entry_nombre = tk.Entry(frame_principal)
@@ -267,6 +293,17 @@ tk.Button(frame_editar, text="Guardar cambios", command=editar_empleado).pack(pa
 tk.Button(frame_editar, text="Eliminar empleado", command=eliminar_empleado).pack(pady=10)
 
 frame_vacaciones = tk.Frame(root)
+frame_lista = tk.Frame(root)
+
+tk.Label(frame_lista, text="Selecciona empleados presentes:", font=("Arial", 12)).pack(pady=5)
+lista_empleados_lista = tk.Listbox(frame_lista, selectmode="multiple", height=10, width=50)
+lista_empleados_lista.pack(pady=5)
+
+tk.Button(frame_lista, text="Registrar pase de lista", command=registrar_pase, bg="#27ae60", fg="white", font=("Arial", 11)).pack(pady=10)
+
+tk.Label(frame_lista, text="Historial de pases de lista:").pack(pady=5)
+text_historial_lista = tk.Text(frame_lista, height=10, width=60, state="disabled")
+text_historial_lista.pack(pady=10)
 
 tk.Label(frame_vacaciones, text="Selecciona un empleado para gestionar vacaciones:").pack(pady=5)
 combo_empleados_vac = ttk.Combobox(frame_vacaciones, state="readonly")
