@@ -21,26 +21,28 @@ class Empleado:
         self.jornada = jornada
         self.dias_descanso_semana = dias_descanso_semana
 
-        self.vacaciones_anuales_base = 15 
+        self.vacaciones_anuales_base = random.randint(15, 25)
         self.vacaciones_disponibles = self.vacaciones_anuales_base
         self.periodos_vacacionales_tomados = []
 
         self.dias_economicos_disponibles = 8
         self.historial_dias_economicos = []
 
+        self.historial_incapacidades = []
+        self.historial_licencias = []
+
     def obtener_hora_inicio_jornada(self):
         if self.jornada == "Matutino":
             return "07:00"
         elif self.jornada == "Vespertino":
             return "14:00"
-        elif "Nocturno" in self.jornada:
+        elif self.jornada == "Nocturno a" or self.jornada == "Nocturno b":
             return "20:00"
         elif self.jornada == "Jornada Acumulada":
             return "07:00"
         elif self.jornada == "Jornada Acumulada Especial":
             return "20:00"
         return None
-
 
 empleados = []
 pases_lista = []
@@ -50,11 +52,14 @@ def actualizar_listas_empleados():
     combo_empleados_vac['values'] = nombres_empleados
     combo_editar['values'] = nombres_empleados
     combo_empleados_dias_eco['values'] = nombres_empleados
+    combo_empleados_incapacidades['values'] = nombres_empleados
+    combo_empleados_licencias['values'] = nombres_empleados
 
     label_info_vac.config(text="")
     entry_vac_inicio.delete(0, tk.END)
     entry_vac_termino.delete(0, tk.END)
     entry_vac_reanudando.delete(0, tk.END)
+    btn_tomar_vacaciones_vac.config(state="disabled")
     text_historial_vac.delete("1.0", tk.END)
 
     actualizar_lista_asistencia()
@@ -69,7 +74,7 @@ def actualizar_lista_asistencia():
     else:
         for emp in empleados:
             if emp.jornada:
-                if turno == "Nocturno" and ("Nocturno" in emp.jornada):
+                if turno == "Nocturno" and (emp.jornada == "Nocturno a" or emp.jornada == "Nocturno b"):
                     empleados_filtrados.append(emp)
                 elif emp.jornada == turno:
                     empleados_filtrados.append(emp)
@@ -111,7 +116,7 @@ def registrar_pase():
     else:
         for emp in empleados:
             if emp.jornada:
-                if current_turno_filter == "Nocturno" and ("Nocturno" in emp.jornada):
+                if current_turno_filter == "Nocturno" and (emp.jornada == "Nocturno a" or emp.jornada == "Nocturno b"):
                     empleados_en_lista_actual.append(emp)
                 elif emp.jornada == current_turno_filter:
                     empleados_en_lista_actual.append(emp)
@@ -178,13 +183,14 @@ def agregar_empleado():
         return
 
     nuevo_empleado = Empleado(nombre, fecha_nacimiento, tipo_contratacion, sexo,
-                              ultimo_grado_estudio, cedula_profesional, domicilio,
-                              telefono, correo_electronico, fecha_ingreso, jornada, dias_descanso)
+                            ultimo_grado_estudio, cedula_profesional, domicilio,
+                            telefono, correo_electronico, fecha_ingreso, jornada, dias_descanso)
     empleados.append(nuevo_empleado)
     actualizar_listas_empleados()
 
     text_historial_empleados.config(state="normal")
-    text_historial_empleados.insert(tk.END, f"Nuevo empleado: {nuevo_empleado.nombre} (ID: {nuevo_empleado.id})\n")
+    text_historial_empleados.insert(tk.END, f"Nuevo empleado: {nuevo_empleado.nombre} (ID: {nuevo_empleado.id}) - "
+                                            f"Contrato: {nuevo_empleado.tipo_contratacion}, Ingreso: {nuevo_empleado.fecha_ingreso}, Jornada: {nuevo_empleado.jornada}\n")
     text_historial_empleados.config(state="disabled")
 
     entry_nombre.delete(0, tk.END)
@@ -209,22 +215,43 @@ def mostrar_vacaciones(event=None):
         entry_vac_inicio.delete("0", tk.END)
         entry_vac_termino.delete("0", tk.END)
         entry_vac_reanudando.delete("0", tk.END)
+        btn_tomar_vacaciones_vac.config(state="disabled")
         return
 
     for emp in empleados:
         if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
-            vacaciones_info = (
-                f"Días de vacaciones disponibles: {emp.vacaciones_disponibles} (de {emp.vacaciones_anuales_base} días base)\n"
-                f"Períodos de vacaciones tomados: {len(emp.periodos_vacacionales_tomados)}"
+            info_empleado = (
+                f"Fecha Nacimiento: {emp.fecha_nacimiento}\n"
+                f"Tipo Contratación: {emp.tipo_contratacion}\n"
+                f"Sexo: {emp.sexo}\n"
+                f"Grado de Estudio: {emp.ultimo_grado_estudio}\n"
+                f"Cédula Profesional: {emp.cedula_profesional}\n"
+                f"Domicilio: {emp.domicilio}\n"
+                f"Teléfono: {emp.telefono}\n"
+                f"Correo Electrónico: {emp.correo_electronico}\n"
+                f"Fecha Ingreso: {emp.fecha_ingreso}\n"
+                f"Jornada: {emp.jornada}\n"
+                f"Días de Descanso: {emp.dias_descanso_semana}\n\n"
             )
-            label_info_vac.config(text=vacaciones_info)
+
+            periodos_regulares_tomados = [p for p in emp.periodos_vacacionales_tomados if p['tipo'] == 'Regular']
+            vacaciones_info = (
+                f"Días de vacaciones disponibles (Base Anual): {emp.vacaciones_disponibles} (de {emp.vacaciones_anuales_base} días base)\n"
+                f"Períodos de vacaciones regulares tomados este año: {len(periodos_regulares_tomados)}/2"
+            )
+            label_info_vac.config(text=info_empleado + vacaciones_info)
 
             text_historial_vac.delete("1.0", tk.END)
             if emp.periodos_vacacionales_tomados:
                 for i, periodo in enumerate(emp.periodos_vacacionales_tomados, start=1):
-                    text_historial_vac.insert(tk.END, f"Período {i}: Inicio: {periodo['inicio']} | Término: {periodo['termino']} | Reanudando: {periodo['reanudando']}\n")
+                    text_historial_vac.insert(tk.END, f"Período {i} ({periodo['tipo']}): Inicio: {periodo['inicio']} | Término: {periodo['termino']} | Reanudando: {periodo['reanudando']}" )
+                    if 'riesgo' in periodo and periodo['riesgo']:
+                        text_historial_vac.insert(tk.END, f" | Riesgo: {periodo['riesgo']}")
+                    text_historial_vac.insert(tk.END, "\n")
             else:
                 text_historial_vac.insert(tk.END, "No hay periodos de vacaciones registrados para este empleado.\n")
+
+            btn_tomar_vacaciones_vac.config(state="normal")
             break
 
 def tomar_vacaciones():
@@ -233,32 +260,63 @@ def tomar_vacaciones():
         messagebox.showwarning("Sin Selección", "Por favor, selecciona un empleado.")
         return
 
-    inicio_str = entry_vac_inicio.get()
-    termino_str = entry_vac_termino.get()
-    reanudando_str = entry_vac_reanudando.get()
+    opciones_ventana = tk.Toplevel(root)
+    opciones_ventana.title("Tipo de Vacaciones")
+    opciones_ventana.geometry("300x150")
+    opciones_ventana.transient(root)
+    opciones_ventana.grab_set()
 
-    if not (inicio_str and termino_str and reanudando_str):
-        messagebox.showwarning("Campos de Fecha Vacíos", "Por favor, ingresa las fechas de inicio, término y reanudación.")
-        return
+    tk.Label(opciones_ventana, text="¿Qué tipo de vacaciones deseas registrar?").pack(pady=10)
 
-    try:
-        inicio_dt = datetime.strptime(inicio_str, "%Y-%m-%d").date()
-        termino_dt = datetime.strptime(termino_str, "%Y-%m-%d").date()
-        reanudando_dt = datetime.strptime(reanudando_str, "%Y-%m-%d").date()
+    def on_regular_vacations():
+        opciones_ventana.destroy()
+        registrar_periodo_vacacional_regular()
 
-        if inicio_dt >= termino_dt:
-            messagebox.showwarning("Fechas Inválidas", "La fecha de inicio debe ser anterior a la fecha de término.")
-            return
-        if termino_dt >= reanudando_dt:
-            messagebox.showwarning("Fechas Inválidas", "La fecha de término debe ser anterior a la fecha de reanudación.")
-            return
+    def on_extraordinary_period():
+        opciones_ventana.destroy()
+        registrar_periodo_extraordinario()
 
-    except ValueError:
-        messagebox.showwarning("Formato de Fecha Inválido", "Las fechas deben estar en formato AAAA-MM-DD.")
+    ttk.Button(opciones_ventana, text="Período Vacacional Regular", command=on_regular_vacations).pack(pady=5)
+    ttk.Button(opciones_ventana, text="Período Extraordinario", command=on_extraordinary_period).pack(pady=5)
+
+    root.wait_window(opciones_ventana)
+
+def registrar_periodo_vacacional_regular():
+    seleccionado = combo_empleados_vac.get()
+    if not seleccionado:
         return
 
     for emp in empleados:
         if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
+            periodos_regulares_tomados = [p for p in emp.periodos_vacacionales_tomados if p['tipo'] == 'Regular']
+            if len(periodos_regulares_tomados) >= 2:
+                messagebox.showinfo("Límite Alcanzado", f"{emp.nombre} ya tomó sus 2 períodos de vacaciones regulares este año.")
+                return
+
+            inicio_str = entry_vac_inicio.get()
+            termino_str = entry_vac_termino.get()
+            reanudando_str = entry_vac_reanudando.get()
+
+            if not (inicio_str and termino_str and reanudando_str):
+                messagebox.showwarning("Campos de Fecha Vacíos", "Por favor, ingresa las fechas de inicio, término y reanudación.")
+                return
+
+            try:
+                inicio_dt = datetime.strptime(inicio_str, "%Y-%m-%d").date()
+                termino_dt = datetime.strptime(termino_str, "%Y-%m-%d").date()
+                reanudando_dt = datetime.strptime(reanudando_str, "%Y-%m-%d").date()
+
+                if inicio_dt >= termino_dt:
+                    messagebox.showwarning("Fechas Inválidas", "La fecha de inicio debe ser anterior a la fecha de término.")
+                    return
+                if termino_dt >= reanudando_dt:
+                    messagebox.showwarning("Fechas Inválidas", "La fecha de término debe ser anterior a la fecha de reanudación.")
+                    return
+
+            except ValueError:
+                messagebox.showwarning("Formato de Fecha Inválido", "Las fechas deben estar en formato AAAA-MM-DD.")
+                return
+
             dias_tomados = (termino_dt - inicio_dt).days + 1
             if dias_tomados > emp.vacaciones_disponibles:
                 messagebox.showwarning("Días Insuficientes", f"El empleado solo tiene {emp.vacaciones_disponibles} días disponibles. Está intentando tomar {dias_tomados} días.")
@@ -269,11 +327,75 @@ def tomar_vacaciones():
                 "inicio": inicio_str,
                 "termino": termino_str,
                 "reanudando": reanudando_str,
-                "dias_tomados": dias_tomados
+                "tipo": "Regular"
             })
 
-            messagebox.showinfo("Vacaciones Registradas", f"Se ha registrado el período de vacaciones para {emp.nombre}.")
-            mostrar_vacaciones() 
+            text_historial_general_vac.config(state="normal")
+            text_historial_general_vac.insert(tk.END, f"{emp.nombre} - Vacaciones Regular Período #{len(periodos_regulares_tomados) + 1} - Del {inicio_str} al {termino_str} ({dias_tomados} días)\n")
+            text_historial_general_vac.config(state="disabled")
+
+            messagebox.showinfo("Vacaciones Registradas", f"Se ha registrado el período de vacaciones regular para {emp.nombre}.")
+            mostrar_vacaciones()
+
+            entry_vac_inicio.delete("0", tk.END)
+            entry_vac_termino.delete("0", tk.END)
+            entry_vac_reanudando.delete("0", tk.END)
+            break
+
+def registrar_periodo_extraordinario():
+    seleccionado = combo_empleados_vac.get()
+    if not seleccionado:
+        return
+
+    for emp in empleados:
+        if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
+            inicio_str = entry_vac_inicio.get()
+            termino_str = entry_vac_termino.get()
+            reanudando_str = entry_vac_reanudando.get()
+
+            if not (inicio_str and termino_str and reanudando_str):
+                messagebox.showwarning("Campos de Fecha Vacíos", "Por favor, ingresa las fechas de inicio, término y reanudación para el período extraordinario.")
+                return
+
+            try:
+                inicio_dt = datetime.strptime(inicio_str, "%Y-%m-%d").date()
+                termino_dt = datetime.strptime(termino_str, "%Y-%m-%d").date()
+                reanudando_dt = datetime.strptime(reanudando_str, "%Y-%m-%d").date()
+
+                if inicio_dt >= termino_dt:
+                    messagebox.showwarning("Fechas Inválidas", "La fecha de inicio debe ser anterior a la fecha de término.")
+                    return
+                if termino_dt >= reanudando_dt:
+                    messagebox.showwarning("Fechas Inválida", "La fecha de término debe ser anterior a la fecha de reanudación.")
+                    return
+
+            except ValueError:
+                messagebox.showwarning("Formato de Fecha Inválido", "Las fechas deben estar en formato AAAA-MM-DD.")
+                return
+
+            dias_concedidos = (termino_dt - inicio_dt).days + 1
+
+            riesgo = simpledialog.askstring("Período Extraordinario", "Ingresa el tipo de riesgo (Alto, Mediano, Bajo):", parent=root)
+            if not riesgo:
+                messagebox.showwarning("Entrada Requerida", "Se requiere el tipo de riesgo para el período extraordinario.")
+                return
+
+            emp.periodos_vacacionales_tomados.append({
+                "inicio": inicio_str,
+                "termino": termino_str,
+                "reanudando": reanudando_str,
+                "tipo": "Extraordinario",
+                "riesgo": riesgo,
+                "dias_concedidos": dias_concedidos
+            })
+
+            text_historial_general_vac.config(state="normal")
+            text_historial_general_vac.insert(tk.END, f"{emp.nombre} - Período Extraordinario ({riesgo}): Del {inicio_str} al {termino_str} ({dias_concedidos} días)\n")
+            text_historial_general_vac.config(state="disabled")
+
+            messagebox.showinfo("Período Extraordinario Registrado", f"Se ha registrado el período extraordinario para {emp.nombre}.")
+            mostrar_vacaciones()
+
             entry_vac_inicio.delete("0", tk.END)
             entry_vac_termino.delete("0", tk.END)
             entry_vac_reanudando.delete("0", tk.END)
@@ -290,11 +412,18 @@ def eliminar_empleado():
             if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
                 empleados.remove(emp)
                 actualizar_listas_empleados()
-                for key in entries_edit_employee:
-                    if isinstance(entries_edit_employee[key], ttk.Entry):
-                        entries_edit_employee[key].delete(0, tk.END)
-                    elif isinstance(entries_edit_employee[key], ttk.Combobox):
-                        entries_edit_employee[key].set("")
+                entry_editar_nombre.delete(0, tk.END)
+                entry_editar_fecha_nacimiento.delete(0, tk.END)
+                combo_editar_tipo_contratacion.set("")
+                combo_editar_sexo.set("")
+                combo_editar_grado_estudio.set("")
+                entry_editar_cedula.delete(0, tk.END)
+                entry_editar_domicilio.delete(0, tk.END)
+                entry_editar_telefono.delete(0, tk.END)
+                entry_editar_correo.delete(0, tk.END)
+                entry_editar_fecha_ingreso.delete(0, tk.END)
+                combo_editar_jornada.set("")
+                entry_editar_dias_descanso.delete(0, tk.END)
                 messagebox.showinfo("Empleado Eliminado", f"{emp.nombre} ha sido eliminado correctamente.")
                 break
 
@@ -404,31 +533,161 @@ def tomar_dia_economico():
                 registro = f"1 día tomado el {fecha_dia_eco_str}"
                 emp.historial_dias_economicos.append(registro)
 
+                text_historial_general_dias_eco.config(state="normal")
+                text_historial_general_dias_eco.insert(tk.END, f"{emp.nombre} - Día Económico tomado el {fecha_dia_eco_str}. Quedan {emp.dias_economicos_disponibles} días.\n")
+                text_historial_general_dias_eco.config(state="disabled")
+
                 messagebox.showinfo("Día Económico Registrado", f"Se ha registrado un día económico para {emp.nombre}.")
-                mostrar_dias_economicos() 
+                mostrar_dias_economicos()
                 entry_fecha_dia_eco.delete(0, tk.END)
             else:
                 messagebox.showinfo("Sin Días Económicos", f"{emp.nombre} no tiene días económicos disponibles.")
             break
 
+def mostrar_incapacidades(event=None):
+    seleccionado = combo_empleados_incapacidades.get()
+    if not seleccionado:
+        label_incapacidad_info.config(text="")
+        text_historial_incapacidades.delete("1.0", tk.END)
+        return
+
+    for emp in empleados:
+        if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
+            text_historial_incapacidades.delete("1.0", tk.END)
+            if emp.historial_incapacidades:
+                for i, inc in enumerate(emp.historial_incapacidades, start=1):
+                    text_historial_incapacidades.insert(tk.END, f"Incapacidad {i}: Inicio: {inc['inicio']} | Fin: {inc['fin']} | Días: {inc['dias']} | Motivo: {inc['motivo']}\n")
+            else:
+                text_historial_incapacidades.insert(tk.END, "No hay incapacidades registradas para este empleado.\n")
+            break
+
+def agregar_incapacidad():
+    seleccionado = combo_empleados_incapacidades.get()
+    if not seleccionado:
+        messagebox.showwarning("Sin Selección", "Por favor, selecciona un empleado.")
+        return
+
+    fecha_inicio_str = entry_incapacidad_inicio.get()
+    fecha_fin_str = entry_incapacidad_fin.get()
+    motivo = entry_incapacidad_motivo.get()
+
+    if not (fecha_inicio_str and fecha_fin_str and motivo):
+        messagebox.showwarning("Campos Incompletos", "Por favor, completa todos los campos de incapacidad.")
+        return
+
+    try:
+        inicio_dt = datetime.strptime(fecha_inicio_str, "%Y-%m-%d").date()
+        fin_dt = datetime.strptime(fecha_fin_str, "%Y-%m-%d").date()
+        if inicio_dt > fin_dt:
+            messagebox.showwarning("Fechas Inválidas", "La fecha de inicio no puede ser posterior a la fecha de fin.")
+            return
+        dias = (fin_dt - inicio_dt).days + 1
+    except ValueError:
+        messagebox.showwarning("Formato de Fecha Inválido", "Las fechas deben estar en formato AAAA-MM-DD.")
+        return
+
+    for emp in empleados:
+        if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
+            emp.historial_incapacidades.append({
+                "inicio": fecha_inicio_str,
+                "fin": fecha_fin_str,
+                "dias": dias,
+                "motivo": motivo
+            })
+            messagebox.showinfo("Incapacidad Registrada", f"Se ha registrado la incapacidad para {emp.nombre}.")
+            mostrar_incapacidades()
+            entry_incapacidad_inicio.delete(0, tk.END)
+            entry_incapacidad_fin.delete(0, tk.END)
+            entry_incapacidad_motivo.delete(0, tk.END)
+            break
+
+def mostrar_licencias(event=None):
+    seleccionado = combo_empleados_licencias.get()
+    if not seleccionado:
+        label_licencia_info.config(text="")
+        text_historial_licencias.delete("1.0", tk.END)
+        return
+
+    for emp in empleados:
+        if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
+            text_historial_licencias.delete("1.0", tk.END)
+            if emp.historial_licencias:
+                for i, lic in enumerate(emp.historial_licencias, start=1):
+                    text_historial_licencias.insert(tk.END, f"Licencia {i}: Inicio: {lic['inicio']} | Fin: {lic['fin']} | Motivo: {lic['motivo']}\n")
+            else:
+                text_historial_licencias.insert(tk.END, "No hay licencias registradas para este empleado.\n")
+            break
+
+def agregar_licencia():
+    seleccionado = combo_empleados_licencias.get()
+    if not seleccionado:
+        messagebox.showwarning("Sin Selección", "Por favor, selecciona un empleado.")
+        return
+
+    fecha_inicio_str = entry_licencia_inicio.get()
+    fecha_fin_str = entry_licencia_fin.get()
+    motivo = entry_licencia_motivo.get()
+
+    if not (fecha_inicio_str and fecha_fin_str and motivo):
+        messagebox.showwarning("Campos Incompletos", "Por favor, completa todos los campos de licencia.")
+        return
+
+    try:
+        inicio_dt = datetime.strptime(fecha_inicio_str, "%Y-%m-%d").date()
+        fin_dt = datetime.strptime(fecha_fin_str, "%Y-%m-%d").date()
+        if inicio_dt > fin_dt:
+            messagebox.showwarning("Fechas Inválidas", "La fecha de inicio no puede ser posterior a la fecha de fin.")
+            return
+    except ValueError:
+        messagebox.showwarning("Formato de Fecha Inválido", "Las fechas deben estar en formato AAAA-MM-DD.")
+        return
+
+    for emp in empleados:
+        if f"{emp.nombre} (ID: {emp.id})" == seleccionado:
+            emp.historial_licencias.append({
+                "inicio": fecha_inicio_str,
+                "fin": fecha_fin_str,
+                "motivo": motivo
+            })
+            messagebox.showinfo("Licencia Registrada", f"Se ha registrado la licencia para {emp.nombre}.")
+            mostrar_licencias()
+            entry_licencia_inicio.delete(0, tk.END)
+            entry_licencia_fin.delete(0, tk.END)
+            entry_licencia_motivo.delete(0, tk.END)
+            break
+
+def mostrar_menu(frame):
+    pass
+
 root = tk.Tk()
-root.title("Sistema de Gestión de Empleados - Básico")
-root.geometry("800x600") 
+root.title("Sistema de Gestión de Empleados - Hospital")
+root.geometry("800x700")
 root.resizable(True, True)
 
 style = ttk.Style(root)
-style.theme_use('clam') 
+style.theme_use('clam')
+
+style.configure('TFrame', background='#e0f2f7')
+style.configure('TLabel', background='#e0f2f7', font=('Helvetica', 10))
+style.configure('TButton', font=('Helvetica', 10, 'bold'), padding=6)
+style.map('TButton',
+    background=[('active', '#007bff'), ('!active', '#0056b3')],
+    foreground=[('active', 'white'), ('!active', 'white')]
+)
+style.configure('TEntry', padding=5)
+style.configure('TCombobox', padding=5)
+style.configure('Treeview', rowheight=25)
 
 notebook = ttk.Notebook(root)
-notebook.pack(fill='both', expand=True, padx=5, pady=5) 
+notebook.pack(fill='both', expand=True, padx=10, pady=10)
 
-frame_principal = ttk.Frame(notebook, padding="10 10 10 10")
+frame_principal = ttk.Frame(notebook, padding="15 15 15 15")
 notebook.add(frame_principal, text="Agregar Empleado")
 
 for i in range(2):
     frame_principal.columnconfigure(i, weight=1)
 
-ttk.Label(frame_principal, text="Registro de Nuevo Empleado", font=('Helvetica', 12, 'bold')).grid(row=0, column=0, columnspan=2, pady=5)
+ttk.Label(frame_principal, text="Registro de Nuevo Empleado", font=('Helvetica', 14, 'bold')).grid(row=0, column=0, columnspan=2, pady=10)
 
 labels_add_employee_data = [
     ("Nombre:", "nombre"),
@@ -447,26 +706,26 @@ labels_add_employee_data = [
 entries_add_employee = {}
 row_num = 1
 for label_text, dict_key in labels_add_employee_data:
-    ttk.Label(frame_principal, text=label_text).grid(row=row_num, column=0, sticky='w', pady=1, padx=3)
+    ttk.Label(frame_principal, text=label_text).grid(row=row_num, column=0, sticky='w', pady=2, padx=5)
     if dict_key == "tipo_contratacion":
         combo_tipo_contratacion = ttk.Combobox(frame_principal, values=["Basificados", "Homologados", "Regularizados", "Contrato", "Suplentes o cubreincidencias"], state="readonly")
-        combo_tipo_contratacion.grid(row=row_num, column=1, sticky='ew', pady=1, padx=3)
+        combo_tipo_contratacion.grid(row=row_num, column=1, sticky='ew', pady=2, padx=5)
         entries_add_employee[dict_key] = combo_tipo_contratacion
     elif dict_key == "sexo":
         combo_sexo = ttk.Combobox(frame_principal, values=["Femenino", "Masculino", "Otro"], state="readonly")
-        combo_sexo.grid(row=row_num, column=1, sticky='ew', pady=1, padx=3)
+        combo_sexo.grid(row=row_num, column=1, sticky='ew', pady=2, padx=5)
         entries_add_employee[dict_key] = combo_sexo
     elif dict_key == "ultimo_grado_estudio":
         combo_grado_estudio = ttk.Combobox(frame_principal, values=["Primaria", "Secundaria", "Bachillerato", "Licenciatura", "Maestría", "Doctorado"], state="readonly")
-        combo_grado_estudio.grid(row=row_num, column=1, sticky='ew', pady=1, padx=3)
+        combo_grado_estudio.grid(row=row_num, column=1, sticky='ew', pady=2, padx=5)
         entries_add_employee[dict_key] = combo_grado_estudio
     elif dict_key == "jornada":
         combo_jornada = ttk.Combobox(frame_principal, values=["Matutino", "Vespertino", "Nocturno a", "Nocturno b", "Jornada Acumulada", "Jornada Acumulada Especial", "Mixta"], state="readonly")
-        combo_jornada.grid(row=row_num, column=1, sticky='ew', pady=1, padx=3)
+        combo_jornada.grid(row=row_num, column=1, sticky='ew', pady=2, padx=5)
         entries_add_employee[dict_key] = combo_jornada
     else:
         entry_widget = ttk.Entry(frame_principal)
-        entry_widget.grid(row=row_num, column=1, sticky='ew', pady=1, padx=3)
+        entry_widget.grid(row=row_num, column=1, sticky='ew', pady=2, padx=5)
         entries_add_employee[dict_key] = entry_widget
     row_num += 1
 
@@ -479,24 +738,25 @@ entry_correo = entries_add_employee['correo_electronico']
 entry_fecha_ingreso = entries_add_employee['fecha_ingreso']
 entry_dias_descanso = entries_add_employee['dias_descanso_semana']
 
-ttk.Button(frame_principal, text="Agregar Empleado", command=agregar_empleado).grid(row=row_num, column=0, columnspan=2, pady=10) 
 
-ttk.Label(frame_principal, text="Historial de Empleados Agregados:").grid(row=row_num+1, column=0, columnspan=2, pady=3) 
-text_historial_empleados = tk.Text(frame_principal, height=6, width=60, state="disabled", wrap="word") 
-text_historial_empleados.grid(row=row_num+2, column=0, columnspan=2, pady=5, padx=3, sticky='nsew') 
+ttk.Button(frame_principal, text="Agregar Empleado", command=agregar_empleado).grid(row=row_num, column=0, columnspan=2, pady=15)
+
+ttk.Label(frame_principal, text="Historial de Empleados Agregados:").grid(row=row_num+1, column=0, columnspan=2, pady=5)
+text_historial_empleados = tk.Text(frame_principal, height=8, width=70, state="disabled", wrap="word")
+text_historial_empleados.grid(row=row_num+2, column=0, columnspan=2, pady=10, padx=5, sticky='nsew')
 frame_principal.rowconfigure(row_num+2, weight=1)
 
-frame_editar = ttk.Frame(notebook, padding="10 10 10 10")
+frame_editar = ttk.Frame(notebook, padding="15 15 15 15")
 notebook.add(frame_editar, text="Editar/Eliminar Empleado")
 
 for i in range(2):
     frame_editar.columnconfigure(i, weight=1)
 
-ttk.Label(frame_editar, text="Editar o Eliminar Empleado", font=('Helvetica', 12, 'bold')).grid(row=0, column=0, columnspan=2, pady=5)
+ttk.Label(frame_editar, text="Editar o Eliminar Empleado", font=('Helvetica', 14, 'bold')).grid(row=0, column=0, columnspan=2, pady=10)
 
-ttk.Label(frame_editar, text="Selecciona un empleado:").grid(row=1, column=0, sticky='w', pady=3, padx=3)
+ttk.Label(frame_editar, text="Selecciona un empleado:").grid(row=1, column=0, sticky='w', pady=5, padx=5)
 combo_editar = ttk.Combobox(frame_editar, state="readonly")
-combo_editar.grid(row=1, column=1, sticky='ew', pady=3, padx=3)
+combo_editar.grid(row=1, column=1, sticky='ew', pady=5, padx=5)
 combo_editar.bind("<<ComboboxSelected>>", cargar_datos_empleado)
 
 labels_edit_employee_data = [
@@ -516,26 +776,26 @@ labels_edit_employee_data = [
 entries_edit_employee = {}
 row_num_edit = 2
 for label_text, dict_key in labels_edit_employee_data:
-    ttk.Label(frame_editar, text=label_text).grid(row=row_num_edit, column=0, sticky='w', pady=1, padx=3)
+    ttk.Label(frame_editar, text=label_text).grid(row=row_num_edit, column=0, sticky='w', pady=2, padx=5)
     if dict_key == "tipo_contratacion":
         combo_editar_tipo_contratacion = ttk.Combobox(frame_editar, values=["Basificados", "Homologados", "Regularizados", "Contrato", "Suplentes o cubreincidencias"], state="readonly")
-        combo_editar_tipo_contratacion.grid(row=row_num_edit, column=1, sticky='ew', pady=1, padx=3)
+        combo_editar_tipo_contratacion.grid(row=row_num_edit, column=1, sticky='ew', pady=2, padx=5)
         entries_edit_employee[dict_key] = combo_editar_tipo_contratacion
     elif dict_key == "sexo":
         combo_editar_sexo = ttk.Combobox(frame_editar, values=["Femenino", "Masculino", "Otro"], state="readonly")
-        combo_editar_sexo.grid(row=row_num_edit, column=1, sticky='ew', pady=1, padx=3)
+        combo_editar_sexo.grid(row=row_num_edit, column=1, sticky='ew', pady=2, padx=5)
         entries_edit_employee[dict_key] = combo_editar_sexo
     elif dict_key == "ultimo_grado_estudio":
         combo_editar_grado_estudio = ttk.Combobox(frame_editar, values=["Primaria", "Secundaria", "Bachillerato", "Licenciatura", "Maestría", "Doctorado"], state="readonly")
-        combo_editar_grado_estudio.grid(row=row_num_edit, column=1, sticky='ew', pady=1, padx=3)
+        combo_editar_grado_estudio.grid(row=row_num_edit, column=1, sticky='ew', pady=2, padx=5)
         entries_edit_employee[dict_key] = combo_editar_grado_estudio
     elif dict_key == "jornada":
         combo_editar_jornada = ttk.Combobox(frame_editar, values=["Matutino", "Vespertino", "Nocturno a", "Nocturno b", "Jornada Acumulada", "Jornada Acumulada Especial", "Mixta"], state="readonly")
-        combo_editar_jornada.grid(row=row_num_edit, column=1, sticky='ew', pady=1, padx=3)
+        combo_editar_jornada.grid(row=row_num_edit, column=1, sticky='ew', pady=2, padx=5)
         entries_edit_employee[dict_key] = combo_editar_jornada
     else:
         entry_widget = ttk.Entry(frame_editar)
-        entry_widget.grid(row=row_num_edit, column=1, sticky='ew', pady=1, padx=3)
+        entry_widget.grid(row=row_num_edit, column=1, sticky='ew', pady=2, padx=5)
         entries_edit_employee[dict_key] = entry_widget
     row_num_edit += 1
 
@@ -548,101 +808,186 @@ entry_editar_correo = entries_edit_employee['correo_electronico']
 entry_editar_fecha_ingreso = entries_edit_employee['fecha_ingreso']
 entry_editar_dias_descanso = entries_edit_employee['dias_descanso_semana']
 
-ttk.Button(frame_editar, text="Guardar Cambios", command=editar_empleado).grid(row=row_num_edit, column=0, columnspan=2, pady=8)
-ttk.Button(frame_editar, text="Eliminar Empleado", command=eliminar_empleado).grid(row=row_num_edit+1, column=0, columnspan=2, pady=3)
 
-frame_vacaciones = ttk.Frame(notebook, padding="10 10 10 10")
+ttk.Button(frame_editar, text="Guardar Cambios", command=editar_empleado).grid(row=row_num_edit, column=0, columnspan=2, pady=10)
+ttk.Button(frame_editar, text="Eliminar Empleado", command=eliminar_empleado, style='Danger.TButton').grid(row=row_num_edit+1, column=0, columnspan=2, pady=5)
+
+frame_vacaciones = ttk.Frame(notebook, padding="15 15 15 15")
 notebook.add(frame_vacaciones, text="Gestión de Vacaciones")
 
 frame_vacaciones.columnconfigure(0, weight=1)
 frame_vacaciones.columnconfigure(1, weight=1)
 
-ttk.Label(frame_vacaciones, text="Gestión de Vacaciones de Empleados", font=('Helvetica', 12, 'bold')).grid(row=0, column=0, columnspan=2, pady=5)
+ttk.Label(frame_vacaciones, text="Gestión de Vacaciones de Empleados", font=('Helvetica', 14, 'bold')).grid(row=0, column=0, columnspan=2, pady=10)
 
-ttk.Label(frame_vacaciones, text="Selecciona un empleado:").grid(row=1, column=0, sticky='w', pady=3, padx=3)
+ttk.Label(frame_vacaciones, text="Selecciona un empleado:").grid(row=1, column=0, sticky='w', pady=5, padx=5)
 combo_empleados_vac = ttk.Combobox(frame_vacaciones, state="readonly")
-combo_empleados_vac.grid(row=1, column=1, sticky='ew', pady=3, padx=3)
+combo_empleados_vac.grid(row=1, column=1, sticky='ew', pady=5, padx=5)
 combo_empleados_vac.bind("<<ComboboxSelected>>", mostrar_vacaciones)
 
-label_info_vac = ttk.Label(frame_vacaciones, text="")
-label_info_vac.grid(row=2, column=0, columnspan=2, pady=5, sticky='w')
+label_info_vac = ttk.Label(frame_vacaciones, text="", wraplength=400)
+label_info_vac.grid(row=2, column=0, columnspan=2, pady=10, sticky='w')
 
-ttk.Label(frame_vacaciones, text="Inicio (AAAA-MM-DD):").grid(row=3, column=0, sticky='w', pady=1, padx=3)
+ttk.Label(frame_vacaciones, text="Inicio (AAAA-MM-DD):").grid(row=3, column=0, sticky='w', pady=2, padx=5)
 entry_vac_inicio = ttk.Entry(frame_vacaciones)
-entry_vac_inicio.grid(row=3, column=1, sticky='ew', pady=1, padx=3)
+entry_vac_inicio.grid(row=3, column=1, sticky='ew', pady=2, padx=5)
 
-ttk.Label(frame_vacaciones, text="Término (AAAA-MM-DD):").grid(row=4, column=0, sticky='w', pady=1, padx=3)
+ttk.Label(frame_vacaciones, text="Término (AAAA-MM-DD):").grid(row=4, column=0, sticky='w', pady=2, padx=5)
 entry_vac_termino = ttk.Entry(frame_vacaciones)
-entry_vac_termino.grid(row=4, column=1, sticky='ew', pady=1, padx=3)
+entry_vac_termino.grid(row=4, column=1, sticky='ew', pady=2, padx=5)
 
-ttk.Label(frame_vacaciones, text="Reanudando (AAAA-MM-DD):").grid(row=5, column=0, sticky='w', pady=1, padx=3)
+ttk.Label(frame_vacaciones, text="Reanudando (AAAA-MM-DD):").grid(row=5, column=0, sticky='w', pady=2, padx=5)
 entry_vac_reanudando = ttk.Entry(frame_vacaciones)
-entry_vac_reanudando.grid(row=5, column=1, sticky='ew', pady=1, padx=3)
+entry_vac_reanudando.grid(row=5, column=1, sticky='ew', pady=2, padx=5)
 
-ttk.Button(frame_vacaciones, text="Registrar Vacaciones", command=tomar_vacaciones).grid(row=6, column=0, columnspan=2, pady=10) 
 
-ttk.Label(frame_vacaciones, text="Historial de vacaciones del empleado:").grid(row=7, column=0, columnspan=2, pady=3, sticky='w')
-text_historial_vac = tk.Text(frame_vacaciones, height=6, width=60, wrap="word")
-text_historial_vac.grid(row=8, column=0, columnspan=2, pady=5, padx=3, sticky='nsew')
+btn_tomar_vacaciones_vac = ttk.Button(frame_vacaciones, text="Registrar Vacaciones/Período Extraordinario", command=tomar_vacaciones)
+btn_tomar_vacaciones_vac.grid(row=6, column=0, columnspan=2, pady=15)
+btn_tomar_vacaciones_vac.config(state="disabled")
+
+ttk.Label(frame_vacaciones, text="Historial de vacaciones del empleado:").grid(row=7, column=0, columnspan=2, pady=5, sticky='w')
+text_historial_vac = tk.Text(frame_vacaciones, height=8, width=70, wrap="word")
+text_historial_vac.grid(row=8, column=0, columnspan=2, pady=5, padx=5, sticky='nsew')
 frame_vacaciones.rowconfigure(8, weight=1)
 
-frame_lista = ttk.Frame(notebook, padding="10 10 10 10")
+ttk.Label(frame_vacaciones, text="Historial General de Vacaciones:").grid(row=9, column=0, columnspan=2, pady=5, sticky='w')
+text_historial_general_vac = tk.Text(frame_vacaciones, height=8, width=70, state="disabled", wrap="word")
+text_historial_general_vac.grid(row=10, column=0, columnspan=2, pady=10, padx=5, sticky='nsew')
+frame_vacaciones.rowconfigure(10, weight=1)
+
+
+frame_lista = ttk.Frame(notebook, padding="15 15 15 15")
 notebook.add(frame_lista, text="Pase de Lista")
 
 frame_lista.columnconfigure(0, weight=1)
 frame_lista.columnconfigure(1, weight=1)
 
-ttk.Label(frame_lista, text="Pase de Lista de Empleados", font=('Helvetica', 12, 'bold')).grid(row=0, column=0, columnspan=2, pady=5)
+ttk.Label(frame_lista, text="Pase de Lista de Empleados", font=('Helvetica', 14, 'bold')).grid(row=0, column=0, columnspan=2, pady=10)
 
-ttk.Label(frame_lista, text="Selecciona el turno para filtrar empleados:").grid(row=1, column=0, sticky='w', pady=3, padx=3)
+ttk.Label(frame_lista, text="Selecciona el turno para filtrar empleados:").grid(row=1, column=0, sticky='w', pady=5, padx=5)
 turno_seleccionado = tk.StringVar(value="Todos")
 combo_turno = ttk.Combobox(frame_lista, textvariable=turno_seleccionado, values=["Todos", "Matutino", "Vespertino", "Nocturno"], state="readonly")
-combo_turno.grid(row=1, column=1, sticky='ew', pady=3, padx=3)
+combo_turno.grid(row=1, column=1, sticky='ew', pady=5, padx=5)
 combo_turno.bind("<<ComboboxSelected>>", filtrar_por_turno)
 
-ttk.Label(frame_lista, text="Selecciona los empleados presentes:").grid(row=2, column=0, columnspan=2, sticky='w', pady=3)
-lista_empleados_lista = tk.Listbox(frame_lista, selectmode=tk.MULTIPLE, width=50, height=8) 
-lista_empleados_lista.grid(row=3, column=0, columnspan=2, pady=5, padx=3, sticky='nsew')
+ttk.Label(frame_lista, text="Selecciona los empleados presentes:").grid(row=2, column=0, columnspan=2, sticky='w', pady=5)
+lista_empleados_lista = tk.Listbox(frame_lista, selectmode=tk.MULTIPLE, width=70, height=10)
+lista_empleados_lista.grid(row=3, column=0, columnspan=2, pady=5, padx=5, sticky='nsew')
 frame_lista.rowconfigure(3, weight=1)
 
-ttk.Label(frame_lista, text="Hora de entrada (HH:MM, 24h):").grid(row=4, column=0, sticky='w', pady=3, padx=3)
-entry_hora_entrada = ttk.Entry(frame_lista, width=15) 
-entry_hora_entrada.grid(row=4, column=1, sticky='ew', pady=3, padx=3)
+ttk.Label(frame_lista, text="Hora de entrada (HH:MM, formato 24h):").grid(row=4, column=0, sticky='w', pady=5, padx=5)
+entry_hora_entrada = ttk.Entry(frame_lista, width=20)
+entry_hora_entrada.grid(row=4, column=1, sticky='ew', pady=5, padx=5)
 
-ttk.Button(frame_lista, text="Registrar Pase de Lista", command=registrar_pase).grid(row=5, column=0, columnspan=2, pady=10)
+ttk.Button(frame_lista, text="Registrar Pase de Lista", command=registrar_pase).grid(row=5, column=0, columnspan=2, pady=15)
 
-ttk.Label(frame_lista, text="Historial de Pases de Lista:").grid(row=6, column=0, columnspan=2, sticky='w', pady=3)
-text_historial_lista = tk.Text(frame_lista, height=8, width=60, state="disabled", wrap="word") 
-text_historial_lista.grid(row=7, column=0, columnspan=2, pady=5, padx=3, sticky='nsew')
+ttk.Label(frame_lista, text="Historial de Pases de Lista:").grid(row=6, column=0, columnspan=2, sticky='w', pady=5)
+text_historial_lista = tk.Text(frame_lista, height=10, width=70, state="disabled", wrap="word")
+text_historial_lista.grid(row=7, column=0, columnspan=2, pady=5, padx=5, sticky='nsew')
 frame_lista.rowconfigure(7, weight=1)
 
-frame_dias_economicos = ttk.Frame(notebook, padding="10 10 10 10")
+frame_dias_economicos = ttk.Frame(notebook, padding="15 15 15 15")
 notebook.add(frame_dias_economicos, text="Días Económicos")
 
 frame_dias_economicos.columnconfigure(0, weight=1)
 frame_dias_economicos.columnconfigure(1, weight=1)
 
-ttk.Label(frame_dias_economicos, text="Gestión de Días Económicos", font=('Helvetica', 12, 'bold')).grid(row=0, column=0, columnspan=2, pady=5)
+ttk.Label(frame_dias_economicos, text="Gestión de Días Económicos", font=('Helvetica', 14, 'bold')).grid(row=0, column=0, columnspan=2, pady=10)
 
-ttk.Label(frame_dias_economicos, text="Selecciona un empleado:").grid(row=1, column=0, sticky='w', pady=3, padx=3)
+ttk.Label(frame_dias_economicos, text="Selecciona un empleado:").grid(row=1, column=0, sticky='w', pady=5, padx=5)
 combo_empleados_dias_eco = ttk.Combobox(frame_dias_economicos, state="readonly")
-combo_empleados_dias_eco.grid(row=1, column=1, sticky='ew', pady=3, padx=3)
+combo_empleados_dias_eco.grid(row=1, column=1, sticky='ew', pady=5, padx=5)
 combo_empleados_dias_eco.bind("<<ComboboxSelected>>", mostrar_dias_economicos)
 
 label_dias_eco_info = ttk.Label(frame_dias_economicos, text="")
-label_dias_eco_info.grid(row=2, column=0, columnspan=2, pady=5, sticky='w')
+label_dias_eco_info.grid(row=2, column=0, columnspan=2, pady=10, sticky='w')
 
-ttk.Label(frame_dias_economicos, text="Fecha del Día Económico (AAAA-MM-DD):").grid(row=3, column=0, sticky='w', pady=1, padx=3)
+ttk.Label(frame_dias_economicos, text="Fecha del Día Económico (AAAA-MM-DD):").grid(row=3, column=0, sticky='w', pady=2, padx=5)
 entry_fecha_dia_eco = ttk.Entry(frame_dias_economicos)
-entry_fecha_dia_eco.grid(row=3, column=1, sticky='ew', pady=1, padx=3)
+entry_fecha_dia_eco.grid(row=3, column=1, sticky='ew', pady=2, padx=5)
 
-ttk.Button(frame_dias_economicos, text="Registrar Día Económico", command=tomar_dia_economico).grid(row=4, column=0, columnspan=2, pady=10)
+ttk.Button(frame_dias_economicos, text="Registrar Día Económico", command=tomar_dia_economico).grid(row=4, column=0, columnspan=2, pady=15)
 
-ttk.Label(frame_dias_economicos, text="Historial de Días Económicos del Empleado:").grid(row=5, column=0, columnspan=2, sticky='w', pady=3)
-text_historial_dias_eco = tk.Text(frame_dias_economicos, height=6, width=60, wrap="word")
-text_historial_dias_eco.grid(row=6, column=0, columnspan=2, pady=5, padx=3, sticky='nsew')
+ttk.Label(frame_dias_economicos, text="Historial de Días Económicos del Empleado:").grid(row=5, column=0, columnspan=2, sticky='w', pady=5)
+text_historial_dias_eco = tk.Text(frame_dias_economicos, height=8, width=70, wrap="word")
+text_historial_dias_eco.grid(row=6, column=0, columnspan=2, pady=5, padx=5, sticky='nsew')
 frame_dias_economicos.rowconfigure(6, weight=1)
 
+ttk.Label(frame_dias_economicos, text="Historial General de Días Económicos:").grid(row=7, column=0, columnspan=2, sticky='w', pady=5)
+text_historial_general_dias_eco = tk.Text(frame_dias_economicos, height=8, width=70, state="disabled", wrap="word")
+text_historial_general_dias_eco.grid(row=8, column=0, columnspan=2, pady=10, padx=5, sticky='nsew')
+frame_dias_economicos.rowconfigure(8, weight=1)
+
+frame_incapacidades = ttk.Frame(notebook, padding="15 15 15 15")
+notebook.add(frame_incapacidades, text="Incapacidades")
+
+frame_incapacidades.columnconfigure(0, weight=1)
+frame_incapacidades.columnconfigure(1, weight=1)
+
+ttk.Label(frame_incapacidades, text="Registro de Incapacidades", font=('Helvetica', 14, 'bold')).grid(row=0, column=0, columnspan=2, pady=10)
+
+ttk.Label(frame_incapacidades, text="Selecciona un empleado:").grid(row=1, column=0, sticky='w', pady=5, padx=5)
+combo_empleados_incapacidades = ttk.Combobox(frame_incapacidades, state="readonly")
+combo_empleados_incapacidades.grid(row=1, column=1, sticky='ew', pady=5, padx=5)
+combo_empleados_incapacidades.bind("<<ComboboxSelected>>", mostrar_incapacidades)
+
+label_incapacidad_info = ttk.Label(frame_incapacidades, text="")
+label_incapacidad_info.grid(row=2, column=0, columnspan=2, pady=10, sticky='w')
+
+ttk.Label(frame_incapacidades, text="Fecha Inicio (AAAA-MM-DD):").grid(row=3, column=0, sticky='w', pady=2, padx=5)
+entry_incapacidad_inicio = ttk.Entry(frame_incapacidades)
+entry_incapacidad_inicio.grid(row=3, column=1, sticky='ew', pady=2, padx=5)
+
+ttk.Label(frame_incapacidades, text="Fecha Fin (AAAA-MM-DD):").grid(row=4, column=0, sticky='w', pady=2, padx=5)
+entry_incapacidad_fin = ttk.Entry(frame_incapacidades)
+entry_incapacidad_fin.grid(row=4, column=1, sticky='ew', pady=2, padx=5)
+
+ttk.Label(frame_incapacidades, text="Motivo:").grid(row=5, column=0, sticky='w', pady=2, padx=5)
+entry_incapacidad_motivo = ttk.Entry(frame_incapacidades)
+entry_incapacidad_motivo.grid(row=5, column=1, sticky='ew', pady=2, padx=5)
+
+ttk.Button(frame_incapacidades, text="Agregar Incapacidad", command=agregar_incapacidad).grid(row=6, column=0, columnspan=2, pady=15)
+
+ttk.Label(frame_incapacidades, text="Historial de Incapacidades del Empleado:").grid(row=7, column=0, columnspan=2, sticky='w', pady=5)
+text_historial_incapacidades = tk.Text(frame_incapacidades, height=10, width=70, wrap="word")
+text_historial_incapacidades.grid(row=8, column=0, columnspan=2, pady=5, padx=5, sticky='nsew')
+frame_incapacidades.rowconfigure(8, weight=1)
+
+frame_licencias = ttk.Frame(notebook, padding="15 15 15 15")
+notebook.add(frame_licencias, text="Licencias")
+
+frame_licencias.columnconfigure(0, weight=1)
+frame_licencias.columnconfigure(1, weight=1)
+
+ttk.Label(frame_licencias, text="Registro de Licencias", font=('Helvetica', 14, 'bold')).grid(row=0, column=0, columnspan=2, pady=10)
+
+ttk.Label(frame_licencias, text="Selecciona un empleado:").grid(row=1, column=0, sticky='w', pady=5, padx=5)
+combo_empleados_licencias = ttk.Combobox(frame_licencias, state="readonly")
+combo_empleados_licencias.grid(row=1, column=1, sticky='ew', pady=5, padx=5)
+combo_empleados_licencias.bind("<<ComboboxSelected>>", mostrar_licencias)
+
+label_licencia_info = ttk.Label(frame_licencias, text="")
+label_licencia_info.grid(row=2, column=0, columnspan=2, pady=10, sticky='w')
+
+ttk.Label(frame_licencias, text="Fecha Inicio (AAAA-MM-DD):").grid(row=3, column=0, sticky='w', pady=2, padx=5)
+entry_licencia_inicio = ttk.Entry(frame_licencias)
+entry_licencia_inicio.grid(row=3, column=1, sticky='ew', pady=2, padx=5)
+
+ttk.Label(frame_licencias, text="Fecha Fin (AAAA-MM-DD):").grid(row=4, column=0, sticky='w', pady=2, padx=5)
+entry_licencia_fin = ttk.Entry(frame_licencias)
+entry_licencia_fin.grid(row=4, column=1, sticky='ew', pady=2, padx=5)
+
+ttk.Label(frame_licencias, text="Motivo:").grid(row=5, column=0, sticky='w', pady=2, padx=5)
+entry_licencia_motivo = ttk.Entry(frame_licencias)
+entry_licencia_motivo.grid(row=5, column=1, sticky='ew', pady=2, padx=5)
+
+ttk.Button(frame_licencias, text="Agregar Licencia", command=agregar_licencia).grid(row=6, column=0, columnspan=2, pady=15)
+
+ttk.Label(frame_licencias, text="Historial de Licencias del Empleado:").grid(row=7, column=0, columnspan=2, sticky='w', pady=5)
+text_historial_licencias = tk.Text(frame_licencias, height=10, width=70, wrap="word")
+text_historial_licencias.grid(row=8, column=0, columnspan=2, pady=5, padx=5, sticky='nsew')
+frame_licencias.rowconfigure(8, weight=1)
+
 actualizar_listas_empleados()
-notebook.select(frame_principal) 
+notebook.select(frame_principal)
 root.mainloop()
